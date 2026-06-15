@@ -477,7 +477,12 @@
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+  const SUPABASE_URL = 'https://ojhjzdvdxnchrizfdntg.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qaGp6ZHZkeG5jaHJpemZkbnRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODAyMjgsImV4cCI6MjA5NzA1NjIyOH0.ph7TR2lKfDnFNCDiWvbF-bQ14p4zjy47f3PIutrFkfs';
+  const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
   const CATEGORIES = {
     income: ['급여','부수입','이자','용돈','기타수입'],
     expense: ['식비','교통','쇼핑','문화/여가','의료','주거','통신','교육','기타지출']
@@ -492,10 +497,16 @@
   const DAY_LABELS = ['월','화','수','목','금','토','일'];
 
   let currentType = 'income';
-  let transactions = JSON.parse(localStorage.getItem('ggm-tx') || '[]');
+  let transactions = [];
 
-  function save() {
-    localStorage.setItem('ggm-tx', JSON.stringify(transactions));
+  async function loadTransactions() {
+    const { data, error } = await db
+      .from('transactions')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) { console.error('불러오기 실패:', error); return; }
+    transactions = data.map(t => ({ ...t, desc: t.description }));
+    refresh();
   }
 
   function setType(type) {
@@ -571,7 +582,7 @@
     }).join('');
   }
 
-  function addTransaction() {
+  async function addTransaction() {
     const date = document.getElementById('f-date').value;
     const category = document.getElementById('f-category').value;
     const desc = document.getElementById('f-desc').value.trim();
@@ -581,25 +592,28 @@
     if (!desc) { alert('내용을 입력해주세요.'); return; }
     if (!amount || amount <= 0) { alert('올바른 금액을 입력해주세요.'); return; }
 
-    transactions.unshift({ id: Date.now(), type: currentType, date, category, desc, amount });
-    save();
+    const { error } = await db.from('transactions').insert({
+      type: currentType, date, category, description: desc, amount
+    });
+    if (error) { alert('저장 실패: ' + error.message); return; }
+
     document.getElementById('f-desc').value = '';
     document.getElementById('f-amount').value = '';
-    refresh();
+    await loadTransactions();
   }
 
-  function deleteTransaction(id) {
-    transactions = transactions.filter(t => t.id !== id);
-    save();
-    refresh();
+  async function deleteTransaction(id) {
+    const { error } = await db.from('transactions').delete().eq('id', id);
+    if (error) { alert('삭제 실패: ' + error.message); return; }
+    await loadTransactions();
   }
 
-  function clearAll() {
+  async function clearAll() {
     if (!transactions.length) return;
     if (!confirm('모든 내역을 삭제하시겠습니까?')) return;
-    transactions = [];
-    save();
-    refresh();
+    const { error } = await db.from('transactions').delete().neq('id', 0);
+    if (error) { alert('삭제 실패: ' + error.message); return; }
+    await loadTransactions();
   }
 
   function updateSummary() {
@@ -676,7 +690,7 @@
   // 초기화
   document.getElementById('f-date').value = new Date().toISOString().slice(0, 10);
   updateCategorySelect();
-  refresh();
+  loadTransactions();
 </script>
 </body>
 </html>
