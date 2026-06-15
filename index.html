@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>가계부</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(180deg, #bae6fd 0%, #e0f2fe 35%, #f0f9ff 65%, #ecfdf5 100%);
+      background-attachment: fixed;
+      color: #333;
+      min-height: 100vh;
+    }
+
+    /* 여름 배경 데코 */
+    .summer-scene {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    header {
+      position: relative;
+      z-index: 1;
+      background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 60%, #10b981 100%);
+      color: white;
+      padding: 20px 24px 44px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { font-size: 1.4rem; font-weight: 700; text-shadow: 0 1px 4px rgba(0,0,0,0.15); }
+    header .subtitle { font-size: 0.8rem; opacity: 0.85; margin-top: 2px; }
+
+    .wave-divider {
+      position: relative;
+      z-index: 1;
+      margin-top: -40px;
+      line-height: 0;
+    }
+    .wave-divider svg { display: block; width: 100%; }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 8px 16px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* 잔액 카드 */
+    .balance-card {
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(8px);
+      border-radius: 20px;
+      padding: 24px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(14,165,233,0.12);
+      border: 1px solid rgba(255,255,255,0.7);
+    }
+    .balance-card .label { font-size: 0.85rem; color: #64748b; margin-bottom: 6px; }
+    .balance-card .amount {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: #0ea5e9;
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #e0f2fe;
+    }
+    .summary-item { text-align: center; }
+    .summary-item .s-label { font-size: 0.78rem; color: #94a3b8; margin-bottom: 4px; }
+    .summary-item .s-amount { font-size: 1.05rem; font-weight: 700; }
+    .income-color { color: #16a34a; }
+    .expense-color { color: #ef4444; }
+
+    /* 주간 통계 카드 */
+    .week-card {
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(8px);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(14,165,233,0.12);
+      border: 1px solid rgba(255,255,255,0.7);
+    }
+    .week-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .week-card-header h2 { font-size: 1rem; font-weight: 700; color: #0369a1; }
+    .week-range { font-size: 0.76rem; color: #94a3b8; }
+
+    .week-summary {
+      display: flex;
+      justify-content: space-around;
+      padding: 10px 0 14px;
+      border-bottom: 1px solid #e0f2fe;
+      margin-bottom: 16px;
+    }
+    .week-summary .w-item { text-align: center; }
+    .week-summary .w-label { font-size: 0.73rem; color: #94a3b8; margin-bottom: 3px; }
+    .week-summary .w-val { font-size: 0.95rem; font-weight: 700; }
+
+    .week-chart {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 4px;
+      height: 80px;
+    }
+    .day-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      height: 100%;
+    }
+    .day-bars {
+      flex: 1;
+      width: 100%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 2px;
+    }
+    .bar {
+      width: 10px;
+      border-radius: 4px 4px 0 0;
+      min-height: 2px;
+      transition: height 0.3s ease;
+    }
+    .bar-income { background: #22c55e; }
+    .bar-expense { background: #f87171; }
+    .day-label {
+      font-size: 0.68rem;
+      color: #94a3b8;
+      margin-top: 4px;
+      font-weight: 600;
+    }
+    .day-label.today { color: #0ea5e9; }
+
+    /* 입력 폼 */
+    .form-card {
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(8px);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(14,165,233,0.12);
+      border: 1px solid rgba(255,255,255,0.7);
+    }
+    .form-card h2 { font-size: 1rem; font-weight: 700; margin-bottom: 14px; color: #0369a1; }
+
+    .type-toggle {
+      display: flex;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #e0f2fe;
+      margin-bottom: 14px;
+    }
+    .type-toggle button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: white;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: background 0.15s, color 0.15s;
+    }
+    .type-toggle button.active-income { background: #16a34a; color: white; }
+    .type-toggle button.active-expense { background: #ef4444; color: white; }
+
+    .form-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .form-row input, .form-row select {
+      flex: 1;
+      min-width: 120px;
+      padding: 10px 12px;
+      border: 1px solid #e0f2fe;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      outline: none;
+      background: white;
+      transition: border-color 0.15s;
+    }
+    .form-row input:focus, .form-row select:focus { border-color: #0ea5e9; }
+    .form-row input[type="number"] { max-width: 160px; }
+
+    .add-btn {
+      width: 100%;
+      margin-top: 12px;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #0ea5e9, #06b6d4);
+      color: white;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .add-btn:hover { opacity: 0.88; }
+
+    /* 내역 */
+    .list-card {
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(8px);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(14,165,233,0.12);
+      border: 1px solid rgba(255,255,255,0.7);
+    }
+    .list-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .list-header h2 { font-size: 1rem; font-weight: 700; color: #0369a1; }
+    .clear-btn {
+      font-size: 0.78rem;
+      color: #94a3b8;
+      border: none;
+      background: none;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: background 0.1s;
+    }
+    .clear-btn:hover { background: #fee2e2; color: #ef4444; }
+
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .filter-row select {
+      padding: 6px 10px;
+      border: 1px solid #e0f2fe;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      outline: none;
+      background: white;
+    }
+
+    .tx-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .tx-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(240,249,255,0.8);
+      transition: background 0.1s;
+    }
+    .tx-item:hover { background: #e0f2fe; }
+
+    .tx-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .icon-income { background: #dcfce7; }
+    .icon-expense { background: #fee2e2; }
+
+    .tx-info { flex: 1; min-width: 0; }
+    .tx-desc {
+      font-size: 0.92rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tx-meta { font-size: 0.76rem; color: #94a3b8; margin-top: 2px; }
+
+    .tx-right { text-align: right; flex-shrink: 0; }
+    .tx-amount { font-size: 0.98rem; font-weight: 700; }
+    .tx-del {
+      background: none;
+      border: none;
+      color: #cbd5e1;
+      cursor: pointer;
+      font-size: 1rem;
+      margin-left: 8px;
+      padding: 4px;
+      border-radius: 6px;
+      transition: color 0.1s, background 0.1s;
+    }
+    .tx-del:hover { color: #ef4444; background: #fee2e2; }
+
+    .empty-msg {
+      text-align: center;
+      color: #94a3b8;
+      padding: 32px 0;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+<!-- 여름 배경 SVG -->
+<div class="summer-scene" aria-hidden="true">
+  <svg width="100%" height="100%" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <!-- 해 -->
+    <circle cx="1300" cy="100" r="64" fill="#fde68a" opacity="0.55"/>
+    <circle cx="1300" cy="100" r="44" fill="#fbbf24" opacity="0.4"/>
+    <!-- 광선 -->
+    <g stroke="#fbbf24" stroke-width="2" opacity="0.22">
+      <line x1="1300" y1="20" x2="1300" y2="0"/>
+      <line x1="1356" y1="44" x2="1372" y2="28"/>
+      <line x1="1380" y1="100" x2="1400" y2="100"/>
+      <line x1="1356" y1="156" x2="1372" y2="172"/>
+      <line x1="1300" y1="180" x2="1300" y2="200"/>
+      <line x1="1244" y1="156" x2="1228" y2="172"/>
+      <line x1="1220" y1="100" x2="1200" y2="100"/>
+      <line x1="1244" y1="44" x2="1228" y2="28"/>
+    </g>
+    <!-- 구름 1 -->
+    <g opacity="0.55" fill="white">
+      <ellipse cx="220" cy="90" rx="80" ry="30"/>
+      <ellipse cx="170" cy="98" rx="50" ry="24"/>
+      <ellipse cx="280" cy="98" rx="55" ry="22"/>
+      <ellipse cx="220" cy="105" rx="90" ry="20"/>
+    </g>
+    <!-- 구름 2 -->
+    <g opacity="0.45" fill="white">
+      <ellipse cx="700" cy="60" rx="65" ry="24"/>
+      <ellipse cx="655" cy="68" rx="42" ry="20"/>
+      <ellipse cx="750" cy="68" rx="46" ry="18"/>
+      <ellipse cx="700" cy="75" rx="72" ry="16"/>
+    </g>
+    <!-- 구름 3 (작은) -->
+    <g opacity="0.35" fill="white">
+      <ellipse cx="1050" cy="130" rx="50" ry="18"/>
+      <ellipse cx="1015" cy="138" rx="32" ry="15"/>
+      <ellipse cx="1090" cy="137" rx="35" ry="14"/>
+    </g>
+    <!-- 바다 파도 (하단) -->
+    <path d="M0 820 Q180 800 360 820 Q540 840 720 820 Q900 800 1080 820 Q1260 840 1440 820 L1440 900 L0 900 Z"
+          fill="#7dd3fc" opacity="0.18"/>
+    <path d="M0 850 Q200 830 400 850 Q600 870 800 850 Q1000 830 1200 850 Q1350 865 1440 850 L1440 900 L0 900 Z"
+          fill="#38bdf8" opacity="0.14"/>
+  </svg>
+</div>
+
+<header>
+  <span style="font-size:1.6rem;">📒</span>
+  <div>
+    <h1>가계부</h1>
+    <div class="subtitle">여름 가계부</div>
+  </div>
+</header>
+
+<!-- 물결 구분선 -->
+<div class="wave-divider">
+  <svg viewBox="0 0 1440 44" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+    <path d="M0,24 C240,44 480,4 720,24 C960,44 1200,4 1440,24 L1440,0 L0,0 Z"
+          fill="url(#waveGrad)"/>
+    <defs>
+      <linearGradient id="waveGrad" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#0ea5e9"/>
+        <stop offset="60%" stop-color="#06b6d4"/>
+        <stop offset="100%" stop-color="#10b981"/>
+      </linearGradient>
+    </defs>
+  </svg>
+</div>
+
+<div class="container">
+
+  <!-- 잔액 카드 -->
+  <div class="balance-card">
+    <div class="label">현재 잔액</div>
+    <div class="amount" id="balance">₩0</div>
+    <div class="summary-row">
+      <div class="summary-item">
+        <div class="s-label">총 수입</div>
+        <div class="s-amount income-color" id="total-income">₩0</div>
+      </div>
+      <div class="summary-item">
+        <div class="s-label">총 지출</div>
+        <div class="s-amount expense-color" id="total-expense">₩0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 주간 통계 -->
+  <div class="week-card">
+    <div class="week-card-header">
+      <h2>📊 이번 주 통계</h2>
+      <span class="week-range" id="week-range"></span>
+    </div>
+    <div class="week-summary">
+      <div class="w-item">
+        <div class="w-label">주간 수입</div>
+        <div class="w-val income-color" id="w-income">₩0</div>
+      </div>
+      <div class="w-item">
+        <div class="w-label">주간 지출</div>
+        <div class="w-val expense-color" id="w-expense">₩0</div>
+      </div>
+      <div class="w-item">
+        <div class="w-label">주간 잔액</div>
+        <div class="w-val" id="w-balance" style="color:#0ea5e9">₩0</div>
+      </div>
+    </div>
+    <!-- 일별 막대 차트 -->
+    <div class="week-chart" id="week-chart"></div>
+  </div>
+
+  <!-- 입력 폼 -->
+  <div class="form-card">
+    <h2>내역 추가</h2>
+    <div class="type-toggle">
+      <button id="btn-income" class="active-income" onclick="setType('income')">+ 수입</button>
+      <button id="btn-expense" onclick="setType('expense')">- 지출</button>
+    </div>
+    <div class="form-row">
+      <input type="date" id="f-date" />
+      <select id="f-category"></select>
+    </div>
+    <div class="form-row" style="margin-top:10px;">
+      <input type="text" id="f-desc" placeholder="내용 (예: 점심식사)" />
+      <input type="number" id="f-amount" placeholder="금액" min="0" />
+    </div>
+    <button class="add-btn" onclick="addTransaction()">추가하기</button>
+  </div>
+
+  <!-- 내역 목록 -->
+  <div class="list-card">
+    <div class="list-header">
+      <h2>거래 내역</h2>
+      <button class="clear-btn" onclick="clearAll()">전체 삭제</button>
+    </div>
+    <div class="filter-row">
+      <select id="filter-type" onchange="renderList()">
+        <option value="all">전체</option>
+        <option value="income">수입</option>
+        <option value="expense">지출</option>
+      </select>
+      <select id="filter-category" onchange="renderList()">
+        <option value="all">모든 카테고리</option>
+      </select>
+      <select id="filter-month" onchange="renderList()">
+        <option value="all">전체 기간</option>
+      </select>
+    </div>
+    <div class="tx-list" id="tx-list">
+      <div class="empty-msg">내역이 없습니다.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const CATEGORIES = {
+    income: ['급여','부수입','이자','용돈','기타수입'],
+    expense: ['식비','교통','쇼핑','문화/여가','의료','주거','통신','교육','기타지출']
+  };
+
+  const ICONS = {
+    급여:'💰', 부수입:'💵', 이자:'🏦', 용돈:'🎁', 기타수입:'💡',
+    식비:'🍽️', 교통:'🚌', 쇼핑:'🛍️', '문화/여가':'🎬', 의료:'🏥',
+    주거:'🏠', 통신:'📱', 교육:'📚', 기타지출:'📦'
+  };
+
+  const DAY_LABELS = ['월','화','수','목','금','토','일'];
+
+  let currentType = 'income';
+  let transactions = JSON.parse(localStorage.getItem('ggm-tx') || '[]');
+
+  function save() {
+    localStorage.setItem('ggm-tx', JSON.stringify(transactions));
+  }
+
+  function setType(type) {
+    currentType = type;
+    document.getElementById('btn-income').className = type === 'income' ? 'active-income' : '';
+    document.getElementById('btn-expense').className = type === 'expense' ? 'active-expense' : '';
+    updateCategorySelect();
+  }
+
+  function updateCategorySelect() {
+    const sel = document.getElementById('f-category');
+    sel.innerHTML = CATEGORIES[currentType].map(c => `<option value="${c}">${c}</option>`).join('');
+  }
+
+  function fmt(n) {
+    return '₩' + Math.abs(n).toLocaleString('ko-KR');
+  }
+
+  /* 이번 주 월~일 날짜 배열 반환 */
+  function getWeekDates() {
+    const now = new Date();
+    const day = now.getDay(); // 0=일
+    const mon = new Date(now);
+    mon.setDate(now.getDate() - ((day + 6) % 7)); // 이번 주 월요일
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(mon);
+      d.setDate(mon.getDate() + i);
+      return d.toISOString().slice(0, 10);
+    });
+  }
+
+  function renderWeeklyStats() {
+    const weekDates = getWeekDates();
+    const rangeEl = document.getElementById('week-range');
+    rangeEl.textContent = `${weekDates[0].slice(5).replace('-','.')} ~ ${weekDates[6].slice(5).replace('-','.')}`;
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    // 일별 집계
+    const dayIncome = weekDates.map(d =>
+      transactions.filter(t => t.date === d && t.type === 'income').reduce((s,t) => s + t.amount, 0)
+    );
+    const dayExpense = weekDates.map(d =>
+      transactions.filter(t => t.date === d && t.type === 'expense').reduce((s,t) => s + t.amount, 0)
+    );
+
+    const wIncome = dayIncome.reduce((a,b) => a+b, 0);
+    const wExpense = dayExpense.reduce((a,b) => a+b, 0);
+    const wBal = wIncome - wExpense;
+
+    document.getElementById('w-income').textContent = fmt(wIncome);
+    document.getElementById('w-expense').textContent = fmt(wExpense);
+    const wBalEl = document.getElementById('w-balance');
+    wBalEl.textContent = (wBal < 0 ? '-' : '') + fmt(wBal);
+    wBalEl.style.color = wBal < 0 ? '#ef4444' : '#0ea5e9';
+
+    // 막대 차트
+    const maxVal = Math.max(...dayIncome, ...dayExpense, 1);
+    const chartEl = document.getElementById('week-chart');
+    chartEl.innerHTML = weekDates.map((date, i) => {
+      const incH = Math.round((dayIncome[i] / maxVal) * 60);
+      const expH = Math.round((dayExpense[i] / maxVal) * 60);
+      const isToday = date === todayStr;
+      return `
+        <div class="day-col">
+          <div class="day-bars">
+            <div class="bar bar-income" style="height:${incH}px" title="수입 ${fmt(dayIncome[i])}"></div>
+            <div class="bar bar-expense" style="height:${expH}px" title="지출 ${fmt(dayExpense[i])}"></div>
+          </div>
+          <div class="day-label${isToday ? ' today' : ''}">${DAY_LABELS[i]}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function addTransaction() {
+    const date = document.getElementById('f-date').value;
+    const category = document.getElementById('f-category').value;
+    const desc = document.getElementById('f-desc').value.trim();
+    const amount = parseInt(document.getElementById('f-amount').value);
+
+    if (!date) { alert('날짜를 선택해주세요.'); return; }
+    if (!desc) { alert('내용을 입력해주세요.'); return; }
+    if (!amount || amount <= 0) { alert('올바른 금액을 입력해주세요.'); return; }
+
+    transactions.unshift({ id: Date.now(), type: currentType, date, category, desc, amount });
+    save();
+    document.getElementById('f-desc').value = '';
+    document.getElementById('f-amount').value = '';
+    refresh();
+  }
+
+  function deleteTransaction(id) {
+    transactions = transactions.filter(t => t.id !== id);
+    save();
+    refresh();
+  }
+
+  function clearAll() {
+    if (!transactions.length) return;
+    if (!confirm('모든 내역을 삭제하시겠습니까?')) return;
+    transactions = [];
+    save();
+    refresh();
+  }
+
+  function updateSummary() {
+    const income = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const expense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    document.getElementById('total-income').textContent = fmt(income);
+    document.getElementById('total-expense').textContent = fmt(expense);
+    const bal = income - expense;
+    const balEl = document.getElementById('balance');
+    balEl.textContent = (bal < 0 ? '-' : '') + fmt(bal);
+    balEl.style.color = bal < 0 ? '#ef4444' : '#0ea5e9';
+  }
+
+  function updateFilterOptions() {
+    const months = [...new Set(transactions.map(t => t.date.slice(0, 7)))].sort().reverse();
+    const mSel = document.getElementById('filter-month');
+    const mVal = mSel.value;
+    mSel.innerHTML = '<option value="all">전체 기간</option>' +
+      months.map(m => `<option value="${m}">${m}</option>`).join('');
+    if (months.includes(mVal)) mSel.value = mVal;
+
+    const cats = [...new Set(transactions.map(t => t.category))];
+    const cSel = document.getElementById('filter-category');
+    const cVal = cSel.value;
+    cSel.innerHTML = '<option value="all">모든 카테고리</option>' +
+      cats.map(c => `<option value="${c}">${c}</option>`).join('');
+    if (cats.includes(cVal)) cSel.value = cVal;
+  }
+
+  function renderList() {
+    const typeFilter = document.getElementById('filter-type').value;
+    const catFilter = document.getElementById('filter-category').value;
+    const monthFilter = document.getElementById('filter-month').value;
+
+    const list = transactions.filter(t => {
+      if (typeFilter !== 'all' && t.type !== typeFilter) return false;
+      if (catFilter !== 'all' && t.category !== catFilter) return false;
+      if (monthFilter !== 'all' && !t.date.startsWith(monthFilter)) return false;
+      return true;
+    });
+
+    const el = document.getElementById('tx-list');
+    if (!list.length) {
+      el.innerHTML = '<div class="empty-msg">내역이 없습니다.</div>';
+      return;
+    }
+
+    el.innerHTML = list.map(t => `
+      <div class="tx-item">
+        <div class="tx-icon ${t.type === 'income' ? 'icon-income' : 'icon-expense'}">
+          ${ICONS[t.category] || (t.type === 'income' ? '💰' : '💸')}
+        </div>
+        <div class="tx-info">
+          <div class="tx-desc">${t.desc}</div>
+          <div class="tx-meta">${t.date} &middot; ${t.category}</div>
+        </div>
+        <div class="tx-right">
+          <div class="tx-amount ${t.type === 'income' ? 'income-color' : 'expense-color'}">
+            ${t.type === 'income' ? '+' : '-'}${fmt(t.amount)}
+          </div>
+        </div>
+        <button class="tx-del" onclick="deleteTransaction(${t.id})" title="삭제">✕</button>
+      </div>
+    `).join('');
+  }
+
+  function refresh() {
+    updateSummary();
+    renderWeeklyStats();
+    updateFilterOptions();
+    renderList();
+  }
+
+  // 초기화
+  document.getElementById('f-date').value = new Date().toISOString().slice(0, 10);
+  updateCategorySelect();
+  refresh();
+</script>
+</body>
+</html>
