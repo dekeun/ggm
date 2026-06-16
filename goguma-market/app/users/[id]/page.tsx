@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getProfile } from '@/app/actions/profile'
+import ProfileEditor from './ProfileEditor'
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -48,37 +49,38 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-        {/* 프로필 카드 */}
-        <div className="bg-white rounded-2xl border border-orange-100 px-6 py-6 flex items-start gap-4">
-          {profile?.avatar_url ? (
-            <img
-              src={profile.avatar_url}
-              alt={`${sellerNickname} 프로필`}
-              className="w-16 h-16 rounded-full object-cover border-2 border-orange-200 flex-shrink-0"
-            />
-          ) : (
-            <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center text-3xl flex-shrink-0">
-              👤
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-gray-900 text-lg">{sellerNickname}</p>
-            {profile?.bio ? (
-              <p className="text-sm text-gray-500 mt-1 whitespace-pre-wrap">{profile.bio}</p>
+        {/* 프로필 카드 — 본인이면 인라인 편집, 다른 사람이면 읽기 전용 */}
+        {isOwnProfile ? (
+          <ProfileEditor
+            nickname={sellerNickname}
+            initialAvatarUrl={profile?.avatar_url ?? null}
+            initialBio={profile?.bio ?? ''}
+            itemCount={items.length}
+          />
+        ) : (
+          <div className="bg-white rounded-2xl border border-orange-100 px-6 py-6 flex items-start gap-4">
+            {profile?.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt={`${sellerNickname} 프로필`}
+                className="w-20 h-20 rounded-full object-cover border-2 border-orange-200 flex-shrink-0"
+              />
             ) : (
-              <p className="text-sm text-gray-300 mt-1">아직 자기소개가 없어요.</p>
+              <div className="w-20 h-20 rounded-full bg-orange-100 flex items-center justify-center text-4xl flex-shrink-0">
+                👤
+              </div>
             )}
-            <p className="text-xs text-gray-400 mt-2">판매 상품 {items.length}개</p>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-gray-900 text-lg">{sellerNickname}</p>
+              {profile?.bio ? (
+                <p className="text-sm text-gray-500 mt-1 whitespace-pre-wrap">{profile.bio}</p>
+              ) : (
+                <p className="text-sm text-gray-300 mt-1 italic">아직 자기소개가 없어요.</p>
+              )}
+              <p className="text-xs text-gray-400 mt-2">판매 상품 {items.length}개</p>
+            </div>
           </div>
-          {isOwnProfile && (
-            <Link
-              href="/profile/edit"
-              className="flex-shrink-0 text-xs border border-orange-300 text-orange-500 px-3 py-1.5 rounded-full hover:bg-orange-50 transition"
-            >
-              수정
-            </Link>
-          )}
-        </div>
+        )}
 
         {/* 이 사람의 글 모아보기 */}
         <div className="bg-white rounded-2xl border border-orange-100 px-5 py-4">
