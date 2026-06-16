@@ -57,6 +57,7 @@ export default function CommentSection({ itemId, initialComments, currentUserId,
   const [isPending, startTransition] = useTransition()
 
   const isSeller = currentUserId === sellerUserId
+  const canReply = !!currentUserId
 
   // ── 댓글 CRUD ──────────────────────────────────────
 
@@ -183,7 +184,7 @@ export default function CommentSection({ itemId, initialComments, currentUserId,
                       {comment.updated_at !== comment.created_at && <span className="text-xs text-gray-300">(수정됨)</span>}
                     </div>
                     <div className="flex gap-2">
-                      {isSeller && (
+                      {canReply && (
                         <button
                           onClick={() => { setReplyingToCommentId(comment.id); setReplyContent('') }}
                           className="text-xs text-orange-400 hover:text-orange-600 font-medium transition"
@@ -225,7 +226,9 @@ export default function CommentSection({ itemId, initialComments, currentUserId,
                         <>
                           <div className="flex items-center justify-between mb-0.5">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs bg-orange-100 text-orange-600 font-semibold px-1.5 py-0.5 rounded">판매자</span>
+                              {reply.user_id === sellerUserId && (
+                                <span className="text-xs bg-orange-100 text-orange-600 font-semibold px-1.5 py-0.5 rounded">판매자</span>
+                              )}
                               <span className="text-xs font-semibold text-gray-700">{reply.nickname}</span>
                               <span className="text-xs text-gray-400">{timeAgo(reply.created_at)}</span>
                               {reply.updated_at !== reply.created_at && <span className="text-xs text-gray-300">(수정됨)</span>}

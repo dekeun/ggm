@@ -15,9 +15,6 @@ export async function createReply(commentId: string, itemId: string, content: st
   if (!user) return { error: '로그인이 필요해요.' }
   if (!content.trim()) return { error: '답글 내용을 입력해주세요.' }
 
-  const sellerUserId = await getSellerUserId(itemId, supabase)
-  if (user.id !== sellerUserId) return { error: '판매자만 답글을 달 수 있어요.' }
-
   const nickname = user.user_metadata?.nickname ?? user.email ?? '알 수 없음'
 
   const { data, error } = await supabase

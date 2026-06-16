@@ -46,6 +46,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ f
             {user ? (
               <>
                 <Link
+                  href="/my-profile"
+                  className="text-sm text-gray-500 hover:text-orange-500 transition"
+                >
+                  내 프로필
+                </Link>
+                <Link
                   href="/items/new"
                   className="bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition"
                 >
