@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 
 export type ItemState = {
   error?: string
@@ -123,4 +124,23 @@ export async function deleteItem(id: string) {
   }
 
   redirect('/')
+}
+
+export async function updateItemStatus(id: string, status: 'selling' | 'sold') {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: '로그인이 필요해요.' }
+
+  const { error } = await supabase
+    .from('items')
+    .update({ status })
+    .eq('id', id)
+    .eq('user_id', user.id)
+
+  if (error) return { error: '상태 변경 중 오류가 생겼어요.' }
+
+  revalidatePath(`/items/${id}`)
+  revalidatePath('/')
+  return {}
 }

@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { logout } from '@/app/actions/auth'
 import Link from 'next/link'
+import { Suspense } from 'react'
+import FilterTabs from '@/app/components/FilterTabs'
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -13,14 +15,23 @@ function timeAgo(dateStr: string) {
   return `${days}일 전`
 }
 
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ filter?: string }> }) {
+  const { filter } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: items } = await supabase
+  let query = supabase
     .from('items')
     .select('id, title, price, category, seller_nickname, created_at, status, image_urls')
     .order('created_at', { ascending: false })
+
+  if (filter === 'sold') {
+    query = query.eq('status', 'sold')
+  } else if (filter === 'selling') {
+    query = query.neq('status', 'sold')
+  }
+
+  const { data: items } = await query
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-amber-50">
@@ -65,6 +76,11 @@ export default async function Home() {
 
       {/* 메인 */}
       <main className="max-w-2xl mx-auto px-4 py-4">
+        {/* 필터 탭 */}
+        <Suspense>
+          <FilterTabs />
+        </Suspense>
+
         {items && items.length > 0 ? (
           <ul className="divide-y divide-orange-100">
             {items.map((item) => (
@@ -92,12 +108,14 @@ export default async function Home() {
                       {item.price.toLocaleString('ko-KR')}원
                     </p>
                   </div>
-                  {/* 판매완료 배지 */}
-                  {item.status === 'sold' && (
-                    <span className="text-xs bg-gray-200 text-gray-500 px-2 py-1 rounded-full flex-shrink-0">
-                      판매완료
-                    </span>
-                  )}
+                  {/* 상태 배지 */}
+                  <span className={`text-xs px-2 py-1 rounded-full flex-shrink-0 font-medium
+                    ${item.status === 'sold'
+                      ? 'bg-gray-200 text-gray-500'
+                      : 'bg-orange-100 text-orange-600'
+                    }`}>
+                    {item.status === 'sold' ? '판매완료' : '판매중'}
+                  </span>
                 </Link>
               </li>
             ))}
