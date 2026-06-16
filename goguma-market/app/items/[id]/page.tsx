@@ -3,6 +3,9 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import ItemActions from './ItemActions'
 import ImageGallery from './ImageGallery'
+import LikeButton from './LikeButton'
+import CommentSection from './CommentSection'
+import { getLikeStatus } from '@/app/actions/likes'
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -29,6 +32,17 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ id:
 
   const { data: { user } } = await supabase.auth.getUser()
   const isOwner = user?.id === item.user_id
+
+  const [likeStatus, commentsResult] = await Promise.all([
+    getLikeStatus(id),
+    supabase
+      .from('comments')
+      .select('*')
+      .eq('item_id', id)
+      .order('created_at', { ascending: true }),
+  ])
+
+  const comments = commentsResult.data ?? []
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-amber-50">
@@ -88,8 +102,23 @@ export default async function ItemDetailPage({ params }: { params: Promise<{ id:
           </p>
         </div>
 
-        {/* 본인 글일 때만 수정/삭제 버튼 표시 */}
-        {isOwner && <ItemActions id={item.id} />}
+        {/* 좋아요 버튼 */}
+        <div className="flex items-center gap-3">
+          <LikeButton
+            itemId={item.id}
+            initialLiked={likeStatus.liked}
+            initialCount={likeStatus.count}
+            isLoggedIn={!!user}
+          />
+          {isOwner && <ItemActions id={item.id} />}
+        </div>
+
+        {/* 댓글 섹션 */}
+        <CommentSection
+          itemId={item.id}
+          initialComments={comments}
+          currentUserId={user?.id ?? null}
+        />
       </main>
     </div>
   )
